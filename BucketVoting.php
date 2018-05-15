@@ -13,50 +13,52 @@
  */
 
 if (!defined('MEDIAWIKI')) {
-    echo("This is an extension to the MediaWiki package and cannot be run standalone.\n" );
+    echo "This is an extension to the MediaWiki package and cannot be run standalone.\n";
     die(-1);
 }
 
 // ------ All the setup functions are up here ------
 
 # Credits that show up on Special:Version
-$wgExtensionCredits['parserhook'][] = array(
+$wgExtensionCredits['parserhook'][] = [
     'path'          => __FILE__,
     'name'          => 'Bucket Voting',
     'version'       => '1.0',
     'author'        => 'Robin Sheat (Catalyst .Net Ltd.)',
     'description'   => 'This extension allows votes to be distributed proprtionally amongst a number of candidates',
     'license'       => 'GPL'
-);
+];
 
 # Allows the table to be defined on update - may not be useful in this case,
 # but shouldn't hurt to have it here.
 $wgHooks['LoadExtensionSchemaUpdates'][] = 'wfBuckVoting_DatabaseSetup';
 
 # This aids support for older MW instances
-if ( defined( 'MW_SUPPORTS_PARSERFIRSTCALLINIT' ) ) {
-        $wgHooks['ParserFirstCallInit'][] = 'wfBucketVoting_Setup';
+if (defined('MW_SUPPORTS_PARSERFIRSTCALLINIT')) {
+    $wgHooks['ParserFirstCallInit'][] = 'wfBucketVoting_Setup';
 } else {
-        $wgExtensionFunctions[] = 'wfBucketVoting_Setup';
+    $wgExtensionFunctions[] = 'wfBucketVoting_Setup';
 }
 
-function wfBucketVoting_Setup() {
+function wfBucketVoting_Setup()
+{
     global $wgParser;
     // This lists all the tag->function mappings we need
-    $wgParser->setHook('vote-start',    'wfBucketVoting_VoteStart');
-    $wgParser->setHook('vote-end',      'wfBucketVoting_VoteEnd');
-    $wgParser->setHook('vote-number',   'wfBucketVoting_VoteNumber');
-    $wgParser->setHook('vote',          'wfBucketVoting_Vote');
+    $wgParser->setHook('vote-start', 'wfBucketVoting_VoteStart');
+    $wgParser->setHook('vote-end', 'wfBucketVoting_VoteEnd');
+    $wgParser->setHook('vote-number', 'wfBucketVoting_VoteNumber');
+    $wgParser->setHook('vote', 'wfBucketVoting_Vote');
     $wgParser->setHook('vote-admin-summary', 'wfBucketVoting_VoteAdminSummary');
     return true;
 }
 
-function wfBucketVoting_DatabaseSetup() {
+function wfBucketVoting_DatabaseSetup()
+{
     global $wgExtNewTables;
-    $wgExtNewTables[] = array(
+    $wgExtNewTables[] = [
         'bucketvotes',
         dirname(__FILE__) . '/BucketVoting.sql'
-    );
+    ];
     return true;
 }
 
@@ -69,17 +71,18 @@ function wfBucketVoting_DatabaseSetup() {
 # the bucket voting. Should be inited each time a form is begun.
 $wgBucketVoting_data = null;
 
-# The vote-start function has two main roles: 
-# * It starts a form that will be used by the other voting elements when the 
-#   time comes to submit the votes, and 
-# * it checks to see if a POST has occurred and processes the values, saving 
-#   the new voting details. 
-# Args: locked: true/false - are users prevented from chaging their 
+# The vote-start function has two main roles:
+# * It starts a form that will be used by the other voting elements when the
+#   time comes to submit the votes, and
+# * it checks to see if a POST has occurred and processes the values, saving
+#   the new voting details.
+# Args: locked: true/false - are users prevented from chaging their
 #               votes? (def: false)
 #       numvotes: the number of votes that will be distributed (def: 10)
-function wfBucketVoting_VoteStart($input, $args, $parser) {
+function wfBucketVoting_VoteStart($input, $args, $parser)
+{
     global $wgTitle, $wgBucketVoting_data;
-    $wgBucketVoting_data = array();
+    $wgBucketVoting_data = [];
     if (isset($args['locked'])) {
         $wgBucketVoting_data['locked'] = $args['locked'] == 'true';
     } else {
@@ -114,7 +117,8 @@ function wfBucketVoting_VoteStart($input, $args, $parser) {
 }
 
 # The vote-end function closes off the form and provides a submit button.
-function wfBucketVoting_VoteEnd($input, $args, $parser) {
+function wfBucketVoting_VoteEnd($input, $args, $parser)
+{
     global $wgBucketVoting_data;
     if ($wgBucketVoting_data == null) {
         return wfBucketVoting_FormatError('Calling vote-end without a previous vote-start is not allowed');
@@ -135,7 +139,8 @@ function wfBucketVoting_VoteEnd($input, $args, $parser) {
 }
 
 # This presents the number of votes that are available to the user to distribute
-function wfBucketVoting_VoteNumber($input, $args, $parser) {
+function wfBucketVoting_VoteNumber($input, $args, $parser)
+{
     global $wgBucketVoting_data;
     if ($wgBucketVoting_data == null) {
         return wfBucketVoting_FormatError('Calling vote-number without a previous vote-start is not allowed');
@@ -145,7 +150,8 @@ function wfBucketVoting_VoteNumber($input, $args, $parser) {
 
 # This is a box that the user can vote in.
 # Args: key - an admin-only description of this vote field
-function wfBucketVoting_Vote($input, $args, $parser) {
+function wfBucketVoting_Vote($input, $args, $parser)
+{
     global $wgBucketVoting_data, $wgUser;
     $parser->disableCache();
     if ($wgBucketVoting_data == null) {
@@ -160,12 +166,14 @@ function wfBucketVoting_Vote($input, $args, $parser) {
     $userid = $wgUser->getId();
     $dbr = wfGetDB(DB_SLAVE); // We're only going to be reading here
     // Find any existing vote by this user on this vote item
-    $currVoteData = $dbr->select('bucketvotes', 'vote', 
-        array(
-            "userid" => $userid, 
+    $currVoteData = $dbr->select(
+        'bucketvotes',
+        'vote',
+        [
+            "userid" => $userid,
             "votekey" => $wgBucketVoting_data['votekey'],
             "voteitemkey" => $key
-        ),
+        ],
         'wfBucketVoting_Vote'
     );
     $output = '';
@@ -187,32 +195,35 @@ function wfBucketVoting_Vote($input, $args, $parser) {
 
 # Shows a summary of the votes recorded by all users. This only does anything
 # if the user is an admin.
-function wfBucketVoting_VoteAdminSummary($input, $args, $parser) {
+function wfBucketVoting_VoteAdminSummary($input, $args, $parser)
+{
     global $wgBucketVoting_data, $wgUser, $wgBucketVoting_admingroup;
     $parser->disableCache();
     if ($wgBucketVoting_data == null) {
         return wfBucketVoting_FormatError('Calling vote-admin-summary without a previous vote-start is not allowed');
     }
 
-    if (!wfBucketVoting_IsAdmin())
+    if (!wfBucketVoting_IsAdmin()) {
         return;
-    
+    }
+
     // Load the vote info from the db
     // Something like:
     // SELECT voteitemkey,SUM(vote) AS votes FROM bucketvotes WHERE votekey=<key> GROUP BY voteitemkey ORDER BY votes DESC;
     $dbr = wfGetDB(DB_SLAVE);
-    $dbRows = $dbr->select('bucketvotes', 
-        array(
+    $dbRows = $dbr->select(
+        'bucketvotes',
+        [
             'voteitemkey',
-            'sum(vote) AS votes'), 
-        array(
+            'sum(vote) AS votes'],
+        [
             'votekey' => $wgBucketVoting_data['votekey'],
-        ),
+        ],
         'wfBucketVoting_VoteAdminSummary',
-        array(
+        [
             'GROUP BY' => 'voteitemkey',
             'ORDER BY' => 'votes DESC'
-        )
+        ]
     );
     $output = '';
     $output .= '<form method="POST" name="admin_functions_'.htmlspecialchars($wgBucketVoting_data['votekey'])."\" />\n";
@@ -231,34 +242,38 @@ function wfBucketVoting_VoteAdminSummary($input, $args, $parser) {
 # will sanity-check the values (as much as it can) and insert them into the
 # database.
 # Returns: a string, if there is a message to display, empty string otherwise.
-function wfBucketVoting_VoteHandlePost($post_data) {
+function wfBucketVoting_VoteHandlePost($post_data)
+{
     global $wgBucketVoting_data, $wgUser;
 
-    if ($wgBucketVoting_data['locked'])
+    if ($wgBucketVoting_data['locked']) {
         return;
-    
+    }
+
     $votekey = $post_data['_votekey'];
-    if ($votekey == null || $votekey == '')
+    if ($votekey == null || $votekey == '') {
         return;
+    }
     if ($votekey != $wgBucketVoting_data['votekey']) {
         trigger_error("Attempted to set the vote parameters for a page that isn't this one", E_USER_ERROR);
         return;
     }
     $numVotes = $wgBucketVoting_data['numvotes'];
-    $rawVotes = array();
+    $rawVotes = [];
     $sumVotes = 0;
     $userid = $wgUser->getId();
     if ($userid == 0) {
         return wfBucketVoting_FormatError('Only logged-in users can vote.');
     }
     $dbw = wfGetDB(DB_MASTER);
-    foreach($post_data as $p_key => $p_value) {
-        if (substr($p_key,0,5) != 'item_') {
+    foreach ($post_data as $p_key => $p_value) {
+        if (substr($p_key, 0, 5) != 'item_') {
             continue;
         }
-        $itemkey = base64_decode(substr($p_key,5));
-        if ($p_value == null || $p_value == "")
+        $itemkey = base64_decode(substr($p_key, 5));
+        if ($p_value == null || $p_value == "") {
             $p_value = 0;
+        }
         if (!is_numeric($p_value) || $p_value < 0) {
             return wfBucketVoting_FormatError('Each vote should be a number greater than zero');
         }
@@ -267,11 +282,12 @@ function wfBucketVoting_VoteHandlePost($post_data) {
     }
 
     if ($sumVotes == 0) {
-        $dbw->delete('bucketvotes', 
-            array(
+        $dbw->delete(
+            'bucketvotes',
+            [
                 'userid' => $userid,
                 'votekey' => $votekey
-            )
+            ]
         );
         return;
         #return wfBucketVoting_FormatError('All votes set to zero');
@@ -279,35 +295,42 @@ function wfBucketVoting_VoteHandlePost($post_data) {
 
     // Scale votes to match numvotes
     $scale = $sumVotes / $numVotes;
-    foreach($rawVotes as $itemkey => $value) {
+    foreach ($rawVotes as $itemkey => $value) {
         $scaledValue = floor($value / $scale);
         // Because the mediawiki DB stuff doesn't give a 'rows updated' count,
         // we have to check first.
         $dbw->begin();
-        $matchArgs = array(
+        $matchArgs = [
             'userid' => $userid,
             'votekey' => $votekey,
             'voteitemkey' => $itemkey
+        ];
+        $res = $dbw->select(
+            'bucketvotes',
+            'vote',
+            $matchArgs,
+            'wfBucketVoting_DoPost'
         );
-        $res = $dbw->select('bucketvotes',
-            'vote', $matchArgs, 'wfBucketVoting_DoPost');
         if (!$dbw->fetchRow($res)) {
-            $dbw->insert('bucketvotes',
-                array('userid' =>   $userid,
+            $dbw->insert(
+                'bucketvotes',
+                [
+                    'userid' =>   $userid,
                     'votekey' =>    $votekey,
                     'voteitemkey'=> $itemkey,
                     'vote' =>       $scaledValue
-                ),
+                ],
                 'wfBucketVoting_DoPost'
             );
         } else {
-            $dbw->update('bucketvotes',
-                array('vote' => $scaledValue),
-                array(
+            $dbw->update(
+                'bucketvotes',
+                ['vote' => $scaledValue],
+                [
                     'userid' => $userid,
                     'votekey' => $votekey,
                     'voteitemkey' => $itemkey
-                ),
+                ],
                 'wfBucketVoting_DoPost'
             );
         }
@@ -316,41 +339,47 @@ function wfBucketVoting_VoteHandlePost($post_data) {
 }
 
 # This handles any admin functions that were requested in the POST
-function wfBucketVoting_AdminHandlePost($post_data) {
+function wfBucketVoting_AdminHandlePost($post_data)
+{
     if (!wfBucketVoting_IsAdmin()) {
         trigger_error("Only admins should be making this request", E_USER_ERROR);
         return;
     }
     $output = '';
     foreach ($post_data as $key => $value) {
-        if (substr($key,0,7) == 'delete_') {
-            $output .= wfBucketVoting_AdminDeleteVotes(base64_decode(substr($key,7)));
+        if (substr($key, 0, 7) == 'delete_') {
+            $output .= wfBucketVoting_AdminDeleteVotes(base64_decode(substr($key, 7)));
         }
     }
     return $output;
 }
 
 # Deletes all the votes associated with the key
-function wfBucketVoting_AdminDeleteVotes($voteitemkey) {    
+function wfBucketVoting_AdminDeleteVotes($voteitemkey)
+{
     global $wgBucketVoting_data;
 
     $dbw = wfGetDB(DB_MASTER);
     $votekey = $wgBucketVoting_data['votekey'];
-    $dbw->delete('bucketvotes',
-        array(
+    $dbw->delete(
+        'bucketvotes',
+        [
             'votekey' => $votekey,
             'voteitemkey' => $voteitemkey
-        ),
-        'wfBucketVoting_AdminDeleteVotes');
+        ],
+        'wfBucketVoting_AdminDeleteVotes'
+    );
 }
 
 # Returns the supplied text formatted like it would be if it were an error
-function wfBucketVoting_FormatError($text) {
+function wfBucketVoting_FormatError($text)
+{
     return "<span class=\"error\">$text</span>";
 }
 
 # Determines if the user is a member of the group that can manage votes
-function wfBucketVoting_IsAdmin() {
+function wfBucketVoting_IsAdmin()
+{
     global $wgUser;
 
     // Is the user in the right group?
