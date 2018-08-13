@@ -31,7 +31,7 @@ $wgExtensionCredits['parserhook'][] = array(
 
 # Allows the table to be defined on update - may not be useful in this case,
 # but shouldn't hurt to have it here.
-$wgHooks['LoadExtensionSchemaUpdates'][] = 'wfBuckVoting_DatabaseSetup';
+$wgHooks['LoadExtensionSchemaUpdates'][] = 'wfBucketVoting_DatabaseSetup';
 
 # This aids support for older MW instances
 if ( defined( 'MW_SUPPORTS_PARSERFIRSTCALLINIT' ) ) {
